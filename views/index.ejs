@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tone Analyzer</title>
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/css/bootstrap-theme.min.css">
+    <style>
+        body {
+            padding-top: 50px;
+        }
+        .contents-container {
+            padding: 1px 18px;
+        }
+        .contents-container p {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body class="container">
+
+<main>
+    <div class="jumbotron">
+        <h1>News website</h1>
+        <div class="row">
+            <div class="col-md-6">
+                <h2>Tone analyzer</h2>
+            </div>
+            <div class="col-md-6">
+                <label>Web URL</label>
+                <div class="input-group">
+                    <input id="site" type="text" class="form-control" value="http://nypost.com">
+                    <span class="input-group-btn">
+                        <button id="analyze" class="btn btn-primary" type="button">Analyze</button>
+                    </span>
+                </div>
+                <br/>
+                <i>
+                    <span id="notification" class="text-danger"></span>
+                </i>
+            </div>
+        </div>
+        <div id="results-container" style="display: none;">
+            <hr/>
+            <div class="row">
+                <div class="col-md-4">
+                    <h3>Emotions</h3>
+                    <canvas id="ctxEmotion" width="100%"></canvas>
+                </div>
+                <div class="col-md-4">
+                    <h3>Languages</h3>
+                    <canvas id="ctxLanguage" width="100%"></canvas>
+                </div>
+                <div class="col-md-4">
+                    <h3>Socials</h3>
+                    <canvas id="ctxSocial" width="100%"></canvas>
+                </div>
+            </div>
+            <br/><br/>
+            <div class="bg-info contents-container">
+                <h3>Texts :</h3>
+                <p id="contents-text"></p>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer>
+    <p class="text-center text-muted">&copy; Copyleft 2017 &mdash; Ahmad Zafrullah</p>
+</footer>
+
+<script type="text/javascript" src="assets/js/jquery.min.js"></script>
+<script type="text/javascript" src="assets/js/Chart.min.js"></script>
+<script>
+    $(document).ready(function () {
+
+        var backgroundColor = [
+            "#FF6384",
+            "#36A2EB",
+            "#FFCE56",
+            "#46ff3a",
+            "#ff630b",
+            "#60fff2"
+        ];
+
+        var ctxEmotion = null;
+        var ctxLanguage = null;
+        var ctxSocial = null;
+
+        $('#analyze').on('click', function () {
+
+            var dataEmotion = {
+                labels: [],
+                datasets: [
+                    {
+                        data: [],
+                        backgroundColor: backgroundColor
+                    }
+                ]
+            }
+
+            var dataLanguage = {
+                labels: [],
+                datasets: [
+                    {
+                        data: [],
+                        backgroundColor: backgroundColor
+                    }
+                ]
+            }
+            var dataSocial = {
+                labels: [],
+                datasets: [
+                    {
+                        data: [],
+                        backgroundColor: backgroundColor
+                    }
+                ]
+            }
+
+            var site = $('#site').val();
+            var notif = $('#notification');
+            notif.html('Please wait...');
+
+            var thisButton = this;
+            $(thisButton).removeClass('btn-primary');
+            $(thisButton).attr('disabled', true);
+
+            $.get('/fetch/' + encodeURIComponent(site), function (data) {
+
+                data = JSON.parse(data);
+
+                $(thisButton).addClass('btn-primary');
+                $(thisButton).attr('disabled', false);
+
+//                console.log(data);
+
+                if (data.hasOwnProperty('results')) {
+
+                    notif.html('');
+                    $('#results-container').show();
+                    $('#contents-text').html(data.contents);
+
+                    var tone_categories = data.results.document_tone.tone_categories;
+
+                    tone_categories[0].tones.forEach(function (tone) {
+                        dataEmotion.labels.push(tone.tone_name);
+                        dataEmotion.datasets[0].data.push(tone.score);
+                    });
+
+                    tone_categories[1].tones.forEach(function (tone) {
+                        dataLanguage.labels.push(tone.tone_name);
+                        dataLanguage.datasets[0].data.push(tone.score);
+                    });
+
+                    tone_categories[2].tones.forEach(function (tone) {
+                        dataSocial.labels.push(tone.tone_name);
+                        dataSocial.datasets[0].data.push(tone.score);
+                    });
+
+//                console.log(dataEmotion);
+//                console.log(dataLanguage);
+//                console.log(dataSocial);
+
+                    if (ctxEmotion !== null) ctxEmotion.destroy();
+                    ctxEmotion = new Chart($('#ctxEmotion'), {
+                        type: 'pie', data: dataEmotion
+                    });
+
+                    if (ctxLanguage !== null) ctxLanguage.destroy();
+                    ctxLanguage = new Chart($('#ctxLanguage'), {
+                        type: 'pie', data: dataLanguage
+                    });
+
+                    if (ctxSocial !== null) ctxSocial.destroy();
+                    ctxSocial = new Chart($('#ctxSocial'), {
+                        type: 'pie', data: dataSocial
+                    });
+
+                } else {
+                    notif.html(data.message);
+                }
+
+            });
+        });
+
+    });
+</script>
+
+</body>
+</html>
